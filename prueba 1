@@ -1,0 +1,46 @@
+import streamlit as st
+import yfinance as yf
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+
+# Título de la aplicación
+st.title("Calculadora de VaR para Acciones de Apple (MXN)")
+
+# Parámetros de entrada
+ticker = "AAPL"
+start_date = st.date_input("Fecha de inicio", value=pd.to_datetime('2023-01-01'))
+end_date = st.date_input("Fecha de fin", value=pd.to_datetime('today'))
+tipo_cambio = st.number_input("Tipo de cambio MXN/USD", value=20.0)
+confidence_level = st.slider("Nivel de confianza", min_value=0.90, max_value=0.99, value=0.95, step=0.01)
+horizon = st.number_input("Horizonte de tiempo (días)", min_value=1, value=1)
+monto_invertir = st.number_input("Monto a invertir (MXN)", min_value=1000.0, value=10000.0)
+
+# Descargar los datos históricos
+data = yf.download(ticker, start=start_date, end=end_date)
+
+# Convertir a pesos mexicanos
+data['Adj Close'] = data['Adj Close'] * tipo_cambio
+
+# Calcular los retornos logarítmicos
+data['returns'] = np.log(data['Adj Close'] / data['Adj Close'].shift(1))
+
+# Calcular la volatilidad histórica
+volatility = np.std(data['returns'])
+
+# Calcular el VaR
+VaR = norm.ppf(1 - confidence_level, loc=0, scale=volatility * np.sqrt(horizon)) * monto_invertir
+
+# Mostrar los resultados
+st.write("## Resultados")
+st.write(f"VaR: {VaR:.2f} MXN")
+
+# Visualizar los retornos
+plt.figure(figsize=(12, 6))
+plt.plot(data['returns'])
+plt.title('Retornos Logarítmicos de Apple (MXN)')
+plt.xlabel('Fecha')
+plt.ylabel('Retorno')
+plt.grid(True)
+st.pyplot()
